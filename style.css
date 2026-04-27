@@ -462,6 +462,10 @@ body {
         padding: 1rem;
     }
     
+    .main-content {
+        width: 100%;
+    }
+    
     .brand {
         margin-bottom: 1rem;
     }
