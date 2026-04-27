@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Player</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- HLS.js for .m3u8 playback -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Player Area -->
+        <aside class="player-sidebar">
+            <div class="brand">
+                <i class="ph-fill ph-television"></i>
+                <h1>Live TV</h1>
+            </div>
+            
+            <div class="player-container">
+                <video id="video-player" controls autoplay playsinline></video>
+                <div class="player-overlay" id="player-overlay">
+                    <i class="ph ph-play-circle"></i>
+                    <p>Select a channel to play</p>
+                </div>
+            </div>
+
+            <div class="now-playing-info">
+                <h2 id="current-channel-name">No Channel Selected</h2>
+                <p id="current-channel-group">---</p>
+            </div>
+            
+            <div class="sidebar-filters">
+                <div id="group-filter" class="chip-container">
+                    <button class="chip active" data-value="All">All</button>
+                    <button class="chip" data-value="Favorites"><i class="ph-fill ph-star" style="margin-right: 4px; color: #fbbf24;"></i>Favorites</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="search-bar">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" id="search-input" placeholder="Search channels...">
+                </div>
+                <div class="stats">
+                    <span id="channel-count">0</span> Channels
+                </div>
+            </header>
+
+            <!-- Loader -->
+            <div id="loader" class="loader-container">
+                <div class="spinner"></div>
+                <p>Loading channels from IPTV... This might take a moment.</p>
+            </div>
+
+            <div class="channels-grid" id="channels-grid">
+                <!-- Channel cards will be generated here by JS -->
+            </div>
+            
+            <div class="pagination-controls" id="pagination-controls" style="display: none;">
+                <button id="prev-page" class="btn"><i class="ph ph-caret-left"></i> Previous</button>
+                <span id="page-info">Page 1 of X</span>
+                <button id="next-page" class="btn">Next <i class="ph ph-caret-right"></i></button>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
