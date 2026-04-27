@@ -13,6 +13,9 @@ let favorites = JSON.parse(localStorage.getItem('iptv_favorites')) || [];
 const grid = document.getElementById('channels-grid');
 const loader = document.getElementById('loader');
 const searchInput = document.getElementById('search-input');
+const voiceSearchIcon = document.getElementById('voice-search-icon');
+const searchIcon = document.getElementById('search-icon');
+const clearSearchIcon = document.getElementById('clear-search-icon');
 const dropdownTrigger = document.getElementById('dropdown-trigger');
 const dropdownSelected = document.getElementById('dropdown-selected');
 const dropdownMenu = document.getElementById('dropdown-menu');
@@ -337,12 +340,91 @@ function applyFilters() {
     renderPage();
 }
 
+function updateSearchUI() {
+    const hasText = searchInput.value.length > 0;
+    const isRecording = voiceSearchIcon && voiceSearchIcon.classList.contains('recording');
+
+    if (isRecording) {
+        if (voiceSearchIcon) voiceSearchIcon.style.display = 'block';
+        if (searchIcon) searchIcon.style.display = 'none';
+        if (clearSearchIcon) clearSearchIcon.style.display = 'none';
+    } else if (hasText) {
+        if (voiceSearchIcon) voiceSearchIcon.style.display = 'none';
+        if (searchIcon) searchIcon.style.display = 'none';
+        if (clearSearchIcon) clearSearchIcon.style.display = 'block';
+    } else {
+        if (voiceSearchIcon) voiceSearchIcon.style.display = 'block';
+        if (searchIcon) searchIcon.style.display = 'block';
+        if (clearSearchIcon) clearSearchIcon.style.display = 'none';
+    }
+}
+
 function setupEventListeners() {
     searchInput.addEventListener('input', () => {
+        updateSearchUI();
         // Debounce search slightly for performance
         clearTimeout(window.searchTimeout);
         window.searchTimeout = setTimeout(applyFilters, 300);
     });
+
+    if (clearSearchIcon) {
+        clearSearchIcon.addEventListener('click', () => {
+            searchInput.value = '';
+            updateSearchUI();
+            applyFilters();
+            searchInput.focus();
+        });
+    }
+    
+    // Voice Search setup
+    if (voiceSearchIcon) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            
+            voiceSearchIcon.addEventListener('click', () => {
+                if (voiceSearchIcon.classList.contains('recording')) {
+                    recognition.stop();
+                    return;
+                }
+                
+                try {
+                    recognition.start();
+                    voiceSearchIcon.classList.add('recording');
+                    searchInput.placeholder = "Listening...";
+                    updateSearchUI();
+                } catch (e) {
+                    console.error("Speech recognition error:", e);
+                }
+            });
+            
+            recognition.addEventListener('result', (e) => {
+                const transcript = e.results[0][0].transcript;
+                // Clean up punctuation sometimes added by speech engines
+                searchInput.value = transcript.replace(/[.,!?]$/, '');
+                updateSearchUI();
+                applyFilters();
+            });
+            
+            recognition.addEventListener('end', () => {
+                voiceSearchIcon.classList.remove('recording');
+                searchInput.placeholder = "Search channels...";
+                updateSearchUI();
+            });
+            
+            recognition.addEventListener('error', (e) => {
+                console.error('Speech recognition error:', e.error);
+                voiceSearchIcon.classList.remove('recording');
+                searchInput.placeholder = "Search channels...";
+                updateSearchUI();
+            });
+        } else {
+            // Hide icon if browser doesn't support Web Speech API
+            voiceSearchIcon.style.display = 'none';
+        }
+    }
     
     dropdownTrigger.addEventListener('click', (e) => {
         e.stopPropagation();
