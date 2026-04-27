@@ -1,5 +1,10 @@
-const M3U_URL = 'https://iptv-org.github.io/iptv/index.m3u';
-const CHANNELS_PER_PAGE = 60;
+function getM3uUrl() {
+    return currentLanguage === 'all' 
+        ? 'https://iptv-org.github.io/iptv/index.m3u' 
+        : `https://iptv-org.github.io/iptv/languages/${currentLanguage}.m3u`;
+}
+
+const CHANNELS_PER_PAGE = 8;
 
 let allChannels = [];
 let filteredChannels = [];
@@ -7,8 +12,25 @@ let currentPage = 1;
 let groups = new Set();
 let activeCard = null;
 let currentGroup = localStorage.getItem('iptv_current_group') || 'All';
+let currentLanguage = localStorage.getItem('iptv_current_language') || 'all';
 let favorites = JSON.parse(localStorage.getItem('iptv_favorites')) || [];
+let isInitialLoad = true;
 
+const LANGUAGES = [
+    { code: 'all', name: 'All Languages' },
+    { code: 'eng', name: 'English' },
+    { code: 'hin', name: 'Hindi' },
+    { code: 'spa', name: 'Spanish' },
+    { code: 'fra', name: 'French' },
+    { code: 'deu', name: 'German' },
+    { code: 'ita', name: 'Italian' },
+    { code: 'por', name: 'Portuguese' },
+    { code: 'rus', name: 'Russian' },
+    { code: 'ara', name: 'Arabic' },
+    { code: 'jpn', name: 'Japanese' },
+    { code: 'kor', name: 'Korean' },
+    { code: 'zho', name: 'Chinese' }
+];
 // DOM Elements
 const grid = document.getElementById('channels-grid');
 const loader = document.getElementById('loader');
@@ -16,6 +38,9 @@ const searchInput = document.getElementById('search-input');
 const voiceSearchIcon = document.getElementById('voice-search-icon');
 const searchIcon = document.getElementById('search-icon');
 const clearSearchIcon = document.getElementById('clear-search-icon');
+const langDropdownTrigger = document.getElementById('lang-dropdown-trigger');
+const langDropdownSelected = document.getElementById('lang-dropdown-selected');
+const langDropdownMenu = document.getElementById('lang-dropdown-menu');
 const dropdownTrigger = document.getElementById('dropdown-trigger');
 const dropdownSelected = document.getElementById('dropdown-selected');
 const dropdownMenu = document.getElementById('dropdown-menu');
@@ -35,7 +60,10 @@ let hls = null;
 
 async function init() {
     try {
-        const response = await fetch(M3U_URL);
+        grid.innerHTML = '';
+        loader.style.display = 'flex';
+        
+        const response = await fetch(getM3uUrl());
         if (!response.ok) throw new Error('Failed to fetch playlist');
         
         const m3uText = await response.text();
@@ -44,7 +72,7 @@ async function init() {
         filteredChannels = [...allChannels];
         populateGroups();
         
-        // Initialize dropdown state
+        // Initialize dropdown states
         if (currentGroup) {
             dropdownSelected.textContent = currentGroup === 'All' ? 'All Categories' : currentGroup;
         } else {
@@ -52,20 +80,28 @@ async function init() {
             dropdownSelected.textContent = 'All Categories';
         }
         
+        const langObj = LANGUAGES.find(l => l.code === currentLanguage);
+        langDropdownSelected.textContent = langObj ? langObj.name : 'All Languages';
+        
+        populateLanguages();
+        
         loader.style.display = 'none';
         
         if (allChannels.length > 0) {
             applyFilters();
             setupEventListeners();
             
-            // Auto-play 'Aaj Tak' using the provided custom high-quality stream URL
-            const defaultChannel = {
-                name: 'Aaj Tak HD',
-                group: 'News',
-                url: 'https://feeds.intoday.in/aajtak/api/aajtakhd/master.m3u8',
-                logo: ''
-            };
-            playChannel(defaultChannel, null);
+            if (isInitialLoad) {
+                // Auto-play 'Aaj Tak' using the provided custom high-quality stream URL
+                const defaultChannel = {
+                    name: 'Aaj Tak HD',
+                    group: 'News',
+                    url: 'https://feeds.intoday.in/aajtak/api/aajtakhd/master.m3u8',
+                    logo: ''
+                };
+                playChannel(defaultChannel, null);
+                isInitialLoad = false;
+            }
         } else {
             grid.innerHTML = '<p>No channels found in the playlist.</p>';
         }
@@ -76,6 +112,8 @@ async function init() {
 }
 
 function parseM3U(data) {
+    allChannels = [];
+    groups = new Set();
     const lines = data.split('\n');
     let currentChannel = null;
 
@@ -142,6 +180,17 @@ function populateGroups() {
         btn.dataset.value = group;
         btn.textContent = group;
         dropdownMenu.appendChild(btn);
+    });
+}
+
+function populateLanguages() {
+    langDropdownMenu.innerHTML = '';
+    LANGUAGES.forEach(lang => {
+        const btn = document.createElement('button');
+        btn.className = `dropdown-item ${currentLanguage === lang.code ? 'active' : ''}`;
+        btn.dataset.value = lang.code;
+        btn.textContent = lang.name;
+        langDropdownMenu.appendChild(btn);
     });
 }
 
@@ -359,7 +408,11 @@ function updateSearchUI() {
     }
 }
 
+let eventsSetup = false;
 function setupEventListeners() {
+    if (eventsSetup) return;
+    eventsSetup = true;
+
     searchInput.addEventListener('input', () => {
         updateSearchUI();
         // Debounce search slightly for performance
@@ -428,11 +481,19 @@ function setupEventListeners() {
     
     dropdownTrigger.addEventListener('click', (e) => {
         e.stopPropagation();
+        langDropdownMenu.classList.remove('show');
         dropdownMenu.classList.toggle('show');
+    });
+
+    langDropdownTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdownMenu.classList.remove('show');
+        langDropdownMenu.classList.toggle('show');
     });
 
     document.addEventListener('click', () => {
         dropdownMenu.classList.remove('show');
+        langDropdownMenu.classList.remove('show');
     });
 
     dropdownMenu.addEventListener('click', (e) => {
@@ -448,6 +509,28 @@ function setupEventListeners() {
         
         localStorage.setItem('iptv_current_group', currentGroup);
         applyFilters();
+    });
+
+    langDropdownMenu.addEventListener('click', (e) => {
+        const item = e.target.closest('.dropdown-item');
+        if (!item) return;
+
+        langDropdownMenu.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+
+        currentLanguage = item.dataset.value;
+        langDropdownSelected.textContent = item.textContent;
+        langDropdownMenu.classList.remove('show');
+        
+        localStorage.setItem('iptv_current_language', currentLanguage);
+        
+        // Reset category to All
+        currentGroup = 'All';
+        localStorage.setItem('iptv_current_group', 'All');
+        dropdownSelected.textContent = 'All Categories';
+        
+        currentPage = 1;
+        init(); // Reload with new language
     });
     
     prevBtn.addEventListener('click', () => {
