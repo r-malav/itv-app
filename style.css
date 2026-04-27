@@ -129,7 +129,7 @@ body {
 }
 
 .sidebar-filters label {
-    display: none; /* Hide label if it exists, or just remove */
+    display: none; /* Hide old label if it still exists */
 }
 
 .chip-container {
