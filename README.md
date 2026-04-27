@@ -1,4 +1,4 @@
-# Live IPTV Player
+# Live IPTV Player  https://r-malav.github.io/itv-app/
 
 A modern, responsive, and web-based IPTV player built with plain HTML, CSS, and JavaScript. This application fetches television channel lists from public M3U playlists and allows you to stream live TV directly in your browser.
 
