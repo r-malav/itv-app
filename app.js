@@ -13,7 +13,9 @@ let favorites = JSON.parse(localStorage.getItem('iptv_favorites')) || [];
 const grid = document.getElementById('channels-grid');
 const loader = document.getElementById('loader');
 const searchInput = document.getElementById('search-input');
-const groupFilter = document.getElementById('group-filter');
+const dropdownTrigger = document.getElementById('dropdown-trigger');
+const dropdownSelected = document.getElementById('dropdown-selected');
+const dropdownMenu = document.getElementById('dropdown-menu');
 const channelCountSpan = document.getElementById('channel-count');
 const paginationControls = document.getElementById('pagination-controls');
 const prevBtn = document.getElementById('prev-page');
@@ -39,12 +41,12 @@ async function init() {
         filteredChannels = [...allChannels];
         populateGroups();
         
-        // Restore active chip
-        const activeChip = groupFilter.querySelector(`.chip[data-value="${currentGroup}"]`) || groupFilter.querySelector('.chip[data-value="All"]');
-        if (activeChip) {
-            groupFilter.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-            activeChip.classList.add('active');
-            currentGroup = activeChip.dataset.value;
+        // Initialize dropdown state
+        if (currentGroup) {
+            dropdownSelected.textContent = currentGroup === 'All' ? 'All Categories' : currentGroup;
+        } else {
+            currentGroup = 'All';
+            dropdownSelected.textContent = 'All Categories';
         }
         
         loader.style.display = 'none';
@@ -88,7 +90,16 @@ function parseM3U(data) {
             // Extract group
             const groupMatch = line.match(/group-title="([^"]+)"/);
             currentChannel.group = groupMatch ? groupMatch[1] : 'Undefined';
-            if (currentChannel.group) groups.add(currentChannel.group);
+            
+            if (currentChannel.group && currentChannel.group !== 'Undefined') {
+                const individualGroups = currentChannel.group.split(';');
+                individualGroups.forEach(g => {
+                    const trimmedGroup = g.trim();
+                    if (trimmedGroup) groups.add(trimmedGroup);
+                });
+            } else if (currentChannel.group === 'Undefined') {
+                groups.add('Undefined');
+            }
             
             // Extract name (everything after the comma)
             const commaIndex = line.lastIndexOf(',');
@@ -106,12 +117,28 @@ function parseM3U(data) {
 }
 
 function populateGroups() {
+    dropdownMenu.innerHTML = '';
+    
+    // Add All
+    const allBtn = document.createElement('button');
+    allBtn.className = `dropdown-item ${currentGroup === 'All' ? 'active' : ''}`;
+    allBtn.dataset.value = 'All';
+    allBtn.textContent = 'All Categories';
+    dropdownMenu.appendChild(allBtn);
+    
+    // Add Favorites
+    const favBtn = document.createElement('button');
+    favBtn.className = `dropdown-item ${currentGroup === 'Favorites' ? 'active' : ''}`;
+    favBtn.dataset.value = 'Favorites';
+    favBtn.innerHTML = '⭐ Favorites';
+    dropdownMenu.appendChild(favBtn);
+
     groups.forEach(group => {
         const btn = document.createElement('button');
-        btn.className = 'chip';
+        btn.className = `dropdown-item ${currentGroup === group ? 'active' : ''}`;
         btn.dataset.value = group;
         btn.textContent = group;
-        groupFilter.appendChild(btn);
+        dropdownMenu.appendChild(btn);
     });
 }
 
@@ -146,7 +173,7 @@ function renderPage() {
             </button>
             <div class="channel-info">
                 <div class="channel-name" title="${channel.name}">${channel.name}</div>
-                <div class="channel-group">${channel.group}</div>
+                <div class="channel-group">${channel.group ? channel.group.split(';').join(', ') : 'Undefined'}</div>
             </div>
         `;
         
@@ -205,7 +232,7 @@ function playChannel(channel, cardElement) {
     }
     
     currentNameEl.textContent = channel.name;
-    currentGroupEl.textContent = channel.group;
+    currentGroupEl.textContent = channel.group ? channel.group.split(';').join(', ') : 'Undefined';
     playerOverlay.style.opacity = '0';
     
     const videoSrc = channel.url;
@@ -299,7 +326,8 @@ function applyFilters() {
         } else if (currentGroup === 'Favorites') {
             matchesGroup = favorites.includes(channel.url);
         } else {
-            matchesGroup = channel.group === currentGroup;
+            const channelGroups = channel.group ? channel.group.split(';').map(g => g.trim()) : [];
+            matchesGroup = channelGroups.includes(currentGroup);
         }
         
         return matchesSearch && matchesGroup;
@@ -316,15 +344,26 @@ function setupEventListeners() {
         window.searchTimeout = setTimeout(applyFilters, 300);
     });
     
-    groupFilter.addEventListener('click', (e) => {
-        const chip = e.target.closest('.chip');
-        if (!chip) return;
+    dropdownTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdownMenu.classList.toggle('show');
+    });
+
+    document.addEventListener('click', () => {
+        dropdownMenu.classList.remove('show');
+    });
+
+    dropdownMenu.addEventListener('click', (e) => {
+        const item = e.target.closest('.dropdown-item');
+        if (!item) return;
+
+        dropdownMenu.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+
+        currentGroup = item.dataset.value;
+        dropdownSelected.textContent = item.textContent === '⭐ Favorites' ? 'Favorites' : item.textContent;
+        dropdownMenu.classList.remove('show');
         
-        // Update active class
-        groupFilter.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-        chip.classList.add('active');
-        
-        currentGroup = chip.dataset.value;
         localStorage.setItem('iptv_current_group', currentGroup);
         applyFilters();
     });
