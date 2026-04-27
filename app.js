@@ -52,6 +52,15 @@ async function init() {
         if (allChannels.length > 0) {
             applyFilters();
             setupEventListeners();
+            
+            // Auto-play 'Aaj Tak' using the provided custom high-quality stream URL
+            const defaultChannel = {
+                name: 'Aaj Tak HD',
+                group: 'News',
+                url: 'https://feeds.intoday.in/aajtak/api/aajtakhd/master.m3u8',
+                logo: ''
+            };
+            playChannel(defaultChannel, null);
         } else {
             grid.innerHTML = '<p>No channels found in the playlist.</p>';
         }
@@ -92,7 +101,7 @@ function parseM3U(data) {
         }
     }
     
-    // Sort groups alphabetically
+    // Sort alphabetically
     groups = Array.from(groups).sort();
 }
 
@@ -187,8 +196,13 @@ function playChannel(channel, cardElement) {
     if (activeCard) {
         activeCard.classList.remove('active');
     }
-    cardElement.classList.add('active');
-    activeCard = cardElement;
+    
+    if (cardElement) {
+        cardElement.classList.add('active');
+        activeCard = cardElement;
+    } else {
+        activeCard = null;
+    }
     
     currentNameEl.textContent = channel.name;
     currentGroupEl.textContent = channel.group;
@@ -208,7 +222,23 @@ function playChannel(channel, cardElement) {
         hls.loadSource(videoSrc);
         hls.attachMedia(video);
         hls.on(Hls.Events.MANIFEST_PARSED, function() {
-            video.play().catch(e => console.log("Playback prevented:", e));
+            video.volume = 1.0;
+            video.muted = false;
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log("Autoplay prevented by browser. User must click to play.");
+                    playerOverlay.style.opacity = '1';
+                    playerOverlay.style.pointerEvents = 'auto';
+                    playerOverlay.innerHTML = '<div style="cursor: pointer; display: flex; flex-direction: column; align-items: center;"><i class="ph ph-play-circle" style="font-size: 4rem; color: var(--primary); transition: transform 0.2s;"></i><p style="margin-top: 1rem; font-weight: 500;">Click anywhere to start video</p></div>';
+                    
+                    playerOverlay.onclick = () => {
+                        video.play();
+                        playerOverlay.style.opacity = '0';
+                        playerOverlay.style.pointerEvents = 'none';
+                    };
+                });
+            }
         });
         
         hls.on(Hls.Events.ERROR, function (event, data) {
@@ -236,7 +266,23 @@ function playChannel(channel, cardElement) {
     else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = videoSrc;
         video.addEventListener('loadedmetadata', function() {
-            video.play();
+            video.volume = 1.0;
+            video.muted = false;
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log("Autoplay prevented by browser. User must click to play.");
+                    playerOverlay.style.opacity = '1';
+                    playerOverlay.style.pointerEvents = 'auto';
+                    playerOverlay.innerHTML = '<div style="cursor: pointer; display: flex; flex-direction: column; align-items: center;"><i class="ph ph-play-circle" style="font-size: 4rem; color: var(--primary); transition: transform 0.2s;"></i><p style="margin-top: 1rem; font-weight: 500;">Click anywhere to start video</p></div>';
+                    
+                    playerOverlay.onclick = () => {
+                        video.play();
+                        playerOverlay.style.opacity = '0';
+                        playerOverlay.style.pointerEvents = 'none';
+                    };
+                });
+            }
         });
     }
 }
