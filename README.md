@@ -19,19 +19,6 @@ A modern, responsive, and web-based IPTV player built with plain HTML, CSS, and 
 - **HLS.js**: A robust JavaScript library for HTTP Live Streaming in browsers that don't support it natively.
 - **Phosphor Icons**: Beautiful, scalable vector icons used throughout the interface.
 
-## Setup & Installation
-
-Since this is a client-side application without a backend, running it is incredibly simple.
-
-1. **Clone the repository** or download the source files.
-2. **Serve the directory** using any basic local web server. For example:
-   - Using Python: `python -m http.server 8000`
-   - Using Node.js (Live Server): `npx serve .`
-   - Or simply open the folder in VS Code and use the **Live Server** extension.
-3. Open your browser and navigate to `http://localhost:8000` (or whatever port your server provides).
-
-> **Note**: Due to strict CORS (Cross-Origin Resource Sharing) policies enforced by browsers, opening the `index.html` file directly from your file system (`file:///...`) might prevent some streams or metadata from loading correctly. Always use a local development server.
-
 ## Usage
 
 - **Navigation**: Use the category chips in the sidebar (or top bar on mobile) to filter channels by genre.
